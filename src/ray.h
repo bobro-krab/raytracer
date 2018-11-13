@@ -165,10 +165,6 @@ v3 NOZ(v3 A) {
     return Result;
 }
 
-f32 operator*(v3 A, v3 B) {
-    return Inner(A, B);
-}
-
 u32 BMPPackVector(v3 v) {
     u32 Result = (
         (0xFF << 24) |

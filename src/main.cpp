@@ -47,21 +47,8 @@ void WriteImage(image_u32 Image,  char *Filename) {
 }
 
 f32 RayInersectPlane(v3 RayOrigin, v3 RayDireciton, v3 PlaneNormal, f32 PlaneDist) {
-    f32 Result = (f32)( - PlaneDist  - PlaneNormal * RayOrigin )/ (f32)(PlaneNormal * RayDireciton);
+    f32 Result = (f32)( - PlaneDist  - Inner(PlaneNormal , RayOrigin) )/ (f32)(Inner(PlaneNormal, RayDireciton));
     return Result;
-}
-
-f32 RayInersectSphere(v3 RayOrigin, v3 RayDireciton, sphere Sphere) {
-    v3 SphereRelativeOrigin = RayOrigin - Sphere.P;
-
-    f32 Result = F32Max;
-    f32 a = RayDireciton * RayDireciton;
-    f32 b = 2 * RayDireciton * SphereRelativeOrigin;
-    f32 c = SphereRelativeOrigin * SphereRelativeOrigin - Sphere.r * Sphere.r;
-
-    f32 x1 = (f32)(-b + sqrt(b * b - 4 * a * c))/(f32)(2 * a);
-    f32 x2 = (f32)(-b - sqrt(b * b - 4 * a * c))/(f32)(2 * a);
-    return std::min(x1, std::min(x2, Result));
 }
 
 f32 RandomBilateral() {
@@ -86,7 +73,7 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
             plane *Plane = &World->Planes[PlaneIndex];
             f32 ThisDistance = RayInersectPlane(RayOrigin, RayDirection, Plane->N, Plane->d);
 
-            f32 Denom = Plane->N * RayDirection;
+            f32 Denom = Inner(Plane->N, RayDirection);
             if ((Denom > -Epsilon) && (Denom < Epsilon)) {
                 continue;
             }
@@ -103,9 +90,9 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
             v3 SphereRelativeOrigin = RayOrigin - Sphere.P;
 
             f32 Result = F32Max;
-            f32 a = RayDirection * RayDirection;
-            f32 b = 2.0f * RayDirection * SphereRelativeOrigin;
-            f32 c = SphereRelativeOrigin * SphereRelativeOrigin - Sphere.r * Sphere.r;
+            f32 a = Inner(RayDirection, RayDirection);
+            f32 b = 2 * Inner(RayDirection, SphereRelativeOrigin);
+            f32 c = Inner(SphereRelativeOrigin, SphereRelativeOrigin) - Sphere.r * Sphere.r;
 
             f32 x1 = (f32)(-b + sqrt(b * b - 4 * a * c))/(f32)(2 * a);
             f32 x2 = (f32)(-b - sqrt(b * b - 4 * a * c))/(f32)(2 * a);
