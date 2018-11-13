@@ -65,42 +65,72 @@ f32 RayInersectSphere(v3 RayOrigin, v3 RayDireciton, sphere Sphere) {
 }
 
 v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
-    v3 Result = World->Materials[0].Color;
-    f32 HitDistance = F32Max;
+    f32 MinHitDistance = 0.001f;
 
-    for (u32 PlaneIndex = 0; PlaneIndex < World->PlaneCount; PlaneIndex++) {
-        plane *Plane = &World->Planes[PlaneIndex];
-        f32 ThisDistance = RayInersectPlane(RayOrigin, RayDirection, Plane->N, Plane->d);
+    v3 Result = {};
+    v3 Attenuation = V3(1, 1, 1);
+    for (auto RayCount = 0; RayCount < 8; ++RayCount) {
+        f32 HitDistance = F32Max;
+        bool HitSomething = false;
 
-        f32 Denom = Plane->N * RayDirection;
-        if ((Denom > -Epsilon) && (Denom < Epsilon)) {
-            continue;
+        u32 HitMaterialIndex = 0;
+        v3 NextOrigin = {};
+        v3 NextNormal = {};
+
+        for (u32 PlaneIndex = 0; PlaneIndex < World->PlaneCount; PlaneIndex++) {
+            plane *Plane = &World->Planes[PlaneIndex];
+            f32 ThisDistance = RayInersectPlane(RayOrigin, RayDirection, Plane->N, Plane->d);
+
+            f32 Denom = Plane->N * RayDirection;
+            if ((Denom > -Epsilon) && (Denom < Epsilon)) {
+                continue;
+            }
+            if ((ThisDistance > MinHitDistance) && (ThisDistance < HitDistance)) {
+                HitSomething = true;
+                HitDistance = ThisDistance;
+                HitMaterialIndex = Plane->MatIndex;
+                NextOrigin = ThisDistance*RayDirection;
+                NextNormal = Plane->N;
+            }
         }
-        if ((ThisDistance > 0) && (ThisDistance < HitDistance)) {
-            HitDistance = ThisDistance;
-            Result = World->Materials[Plane->MatIndex].Color;
+
+        for (u32 SphereIndex = 0; SphereIndex < World->SphereCount; SphereIndex++) {
+            sphere *Sphere = &World->Spheres[SphereIndex];
+            f32 ThisDistance = RayInersectSphere(RayOrigin, RayDirection, *Sphere);
+
+            if ((ThisDistance > MinHitDistance) && (ThisDistance < HitDistance)) {
+                HitSomething = true;
+                HitDistance = ThisDistance;
+                HitMaterialIndex = Sphere->MatIndex;
+                NextOrigin = ThisDistance*RayDirection;
+                NextNormal = NOZ(NextOrigin);
+            }
+        }
+
+        if (HitMaterialIndex) {
+            material Mat = World->Materials[HitMaterialIndex];
+
+            Result = Result +  Hadamard(Attenuation, Mat.EmitColor);
+            Attenuation = Hadamard(Attenuation, Mat.ReflectColor);
+            RayOrigin = NextOrigin;
+            // TODO: reflection
+            RayDirection = NextNormal;
+
+        } else {
+            material Mat = World->Materials[HitMaterialIndex];
+            Result = Result +  Hadamard(Attenuation, Mat.EmitColor);
+            break;
         }
     }
-
-    for (u32 SphereIndex = 0; SphereIndex < World->SphereCount; SphereIndex++) {
-        sphere *Sphere = &World->Spheres[SphereIndex];
-        f32 ThisDistance = RayInersectSphere(RayOrigin, RayDirection, *Sphere);
-
-        if ((ThisDistance > 0) && (ThisDistance < HitDistance)) {
-            HitDistance = ThisDistance;
-            Result = World->Materials[Sphere->MatIndex].Color;
-        }
-    }
-
     return Result;
 }
 
 int main()
 {
     material Materials[3] = {};
-    Materials[0].Color = V3(0.1, 0.1, 0.1);
-    Materials[1].Color = V3(0.8, 0, 0);
-    Materials[2].Color = V3(0, 0, 0.8);
+    Materials[0].EmitColor= V3(0.3, 0.4, 0.5);
+    Materials[1].EmitColor= V3(0.4, 0.7, 0.4);
+    Materials[2].EmitColor= V3(0, 0, 0.8);
 
     plane Plane = {};
     Plane.N = V3(0, 0, 1);
@@ -116,7 +146,7 @@ int main()
 
     sphere Spheres[1] = {};
     Spheres[0].MatIndex = 2;
-    Spheres[0].P = V3(0, 0, 0.4);
+    Spheres[0].P = V3(0, 0, 0.63);
     Spheres[0].r = 1.0f;
 
     World.SphereCount = 1;

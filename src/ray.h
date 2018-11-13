@@ -68,7 +68,8 @@ struct image_u32 {
 };
 
 struct material {
-    v3 Color;
+    v3 EmitColor;
+    v3 ReflectColor;
 };
 
 struct plane {
@@ -123,6 +124,13 @@ v3 operator+(v3 A, v3 B ) {
     return Result;
 };
 
+v3 Hadamard(v3 A, v3 B) {
+    v3 Result = {};
+    Result.r = A.r * B.r;
+    Result.g = A.g * B.g;
+    Result.b = A.b * B.b;
+    return Result;
+}
 
 f32 Inner(v3 A, v3 B) {
     f32 result = A.x * B.x + A.y * B.y + A.z * B.z;
