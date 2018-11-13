@@ -64,6 +64,11 @@ f32 RayInersectSphere(v3 RayOrigin, v3 RayDireciton, sphere Sphere) {
     return std::min(x1, std::min(x2, Result));
 }
 
+f32 RandomBilateral() {
+    f32 Result = (f32)rand() / (f32) RAND_MAX;
+    return Result;
+}
+
 v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
     f32 MinHitDistance = 0.001f;
 
@@ -74,8 +79,8 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
         bool HitSomething = false;
 
         u32 HitMaterialIndex = 0;
-        v3 NextOrigin = {};
         v3 NextNormal = {};
+        v3 NextOrigin = {};
 
         for (u32 PlaneIndex = 0; PlaneIndex < World->PlaneCount; PlaneIndex++) {
             plane *Plane = &World->Planes[PlaneIndex];
@@ -89,32 +94,46 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
                 HitSomething = true;
                 HitDistance = ThisDistance;
                 HitMaterialIndex = Plane->MatIndex;
-                NextOrigin = ThisDistance*RayDirection;
                 NextNormal = Plane->N;
             }
         }
 
         for (u32 SphereIndex = 0; SphereIndex < World->SphereCount; SphereIndex++) {
-            sphere *Sphere = &World->Spheres[SphereIndex];
-            f32 ThisDistance = RayInersectSphere(RayOrigin, RayDirection, *Sphere);
+            sphere Sphere = World->Spheres[SphereIndex];
+            v3 SphereRelativeOrigin = RayOrigin - Sphere.P;
+
+            f32 Result = F32Max;
+            f32 a = RayDirection * RayDirection;
+            f32 b = 2.0f * RayDirection * SphereRelativeOrigin;
+            f32 c = SphereRelativeOrigin * SphereRelativeOrigin - Sphere.r * Sphere.r;
+
+            f32 x1 = (f32)(-b + sqrt(b * b - 4 * a * c))/(f32)(2 * a);
+            f32 x2 = (f32)(-b - sqrt(b * b - 4 * a * c))/(f32)(2 * a);
+
+            f32 ThisDistance = x1;
+            if ((ThisDistance > MinHitDistance) && (x2 < x1)) {
+                ThisDistance = x2;
+            }
 
             if ((ThisDistance > MinHitDistance) && (ThisDistance < HitDistance)) {
                 HitSomething = true;
                 HitDistance = ThisDistance;
-                HitMaterialIndex = Sphere->MatIndex;
-                NextOrigin = ThisDistance*RayDirection;
-                NextNormal = NOZ(NextOrigin);
+                HitMaterialIndex = Sphere.MatIndex;
+                NextNormal = NOZ(ThisDistance * RayDirection + RayDirection - Sphere.P);
             }
         }
 
         if (HitMaterialIndex) {
             material Mat = World->Materials[HitMaterialIndex];
 
-            Result = Result +  Hadamard(Attenuation, Mat.EmitColor);
+            Result = Result + Hadamard(Attenuation, Mat.EmitColor);
             Attenuation = Hadamard(Attenuation, Mat.ReflectColor);
-            RayOrigin = NextOrigin;
+            RayOrigin = HitDistance * RayDirection;
             // TODO: reflection
-            RayDirection = NextNormal;
+            v3 PureBounce = RayDirection - 2.0f * Inner(RayDirection, NextNormal) * NextNormal;
+            // v3 RandomBounce = NOZ(NextNormal + V3(RandomBilateral(),RandomBilateral(),RandomBilateral() ));
+            // RayDirection = NOZ(Lerp(RandomBounce, Mat.Scatter, PureBounce));
+            RayDirection = PureBounce;
 
         } else {
             material Mat = World->Materials[HitMaterialIndex];
@@ -129,8 +148,8 @@ int main()
 {
     material Materials[3] = {};
     Materials[0].EmitColor= V3(0.3, 0.4, 0.5);
-    Materials[1].EmitColor= V3(0.4, 0.7, 0.4);
-    Materials[2].EmitColor= V3(0, 0, 0.8);
+    Materials[1].ReflectColor= V3(0.4, 0.7, 0.4);
+    Materials[2].ReflectColor= V3(0.3, 0.3, 0.8);
 
     plane Plane = {};
     Plane.N = V3(0, 0, 1);

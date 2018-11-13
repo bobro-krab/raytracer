@@ -68,6 +68,7 @@ struct image_u32 {
 };
 
 struct material {
+    f32 Scatter; // 0 - Pure diffuse, 1 - Pure specular(like mirror)
     v3 EmitColor;
     v3 ReflectColor;
 };
@@ -116,6 +117,7 @@ v3 operator-(v3 A, v3 B ) {
 };
 
 
+
 v3 operator+(v3 A, v3 B ) {
     v3 Result = {};
     Result.x = A.x + B.x;
@@ -124,6 +126,9 @@ v3 operator+(v3 A, v3 B ) {
     return Result;
 };
 
+v3 Lerp(v3 A, f32 multiplyer, v3 B) {
+    return (A + multiplyer * (B - A));
+}
 v3 Hadamard(v3 A, v3 B) {
     v3 Result = {};
     Result.r = A.r * B.r;
