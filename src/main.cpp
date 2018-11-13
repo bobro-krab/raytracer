@@ -116,11 +116,12 @@ int main()
 
     sphere Spheres[1] = {};
     Spheres[0].MatIndex = 2;
-    Spheres[0].P = V3(0, 0, 0);
+    Spheres[0].P = V3(0, 0, 0.4);
     Spheres[0].r = 1.0f;
 
     World.SphereCount = 1;
     World.Spheres = Spheres;
+    image_u32 Image = AllocateImage(1280, 720);
 
     v3 CameraPos = V3(0, 10, 1);
     v3 CameraZ = NOZ(CameraPos);
@@ -131,11 +132,16 @@ int main()
     v3 FilmCenter = CameraPos - FilmDistanceToCamera * CameraZ;
     f32 FilmW = 1.0f;
     f32 FilmH = 1.0f;
+    if (Image.Width > Image.Height) {
+        FilmH = FilmW * ((f32) Image.Height / (f32) Image.Width);
+    }
+    if (Image.Height > Image.Width) {
+        FilmW = FilmH * ((f32) Image.Width / (f32) Image.Height);
+    }
 
     f32 HalfFilmW = FilmW * 0.5f;
     f32 HalfFilmH = FilmH * 0.5f;
 
-    image_u32 Image = AllocateImage(720, 720);
 
     u32 *Out = Image.Pixels;
     for (u32 y = 0; y < Image.Height; y++) {
@@ -150,6 +156,9 @@ int main()
             v3 Color = RayCast(RayOrigin, RayDirection, &World);
 
             *Out ++ = BMPPackVector(Color);
+        }
+        if ( y % 64 == 0) {
+            printf("Calculating %d\%\n", (u32)(100.0f * (f32)y/(f32)Image.Height));
         }
     }
 
