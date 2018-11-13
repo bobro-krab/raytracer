@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -45,19 +46,61 @@ void WriteImage(image_u32 Image,  char *Filename) {
 
 }
 
-v3 RayCast(v3 Origin, v3 Direction, world *World) {
-    v3 Result = {};
-    Result.r = 0.5;
-    Result.g = 0;
-    Result.b = 0;
+f32 RayInersectPlane(v3 RayOrigin, v3 RayDireciton, v3 PlaneNormal, f32 PlaneDist) {
+    f32 Result = (f32)( - PlaneDist  - PlaneNormal * RayOrigin )/ (f32)(PlaneNormal * RayDireciton);
+    return Result;
+}
+
+f32 RayInersectSphere(v3 RayOrigin, v3 RayDireciton, sphere Sphere) {
+    v3 SphereRelativeOrigin = RayOrigin - Sphere.P;
+
+    f32 Result = F32Max;
+    f32 a = RayDireciton * RayDireciton;
+    f32 b = 2 * RayDireciton * SphereRelativeOrigin;
+    f32 c = SphereRelativeOrigin * SphereRelativeOrigin - Sphere.r * Sphere.r;
+
+    f32 x1 = (f32)(-b + sqrt(b * b - 4 * a * c))/(f32)(2 * a);
+    f32 x2 = (f32)(-b - sqrt(b * b - 4 * a * c))/(f32)(2 * a);
+    return std::min(x1, std::min(x2, Result));
+}
+
+v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
+    v3 Result = World->Materials[0].Color;
+    f32 HitDistance = F32Max;
+
+    for (u32 PlaneIndex = 0; PlaneIndex < World->PlaneCount; PlaneIndex++) {
+        plane *Plane = &World->Planes[PlaneIndex];
+        f32 ThisDistance = RayInersectPlane(RayOrigin, RayDirection, Plane->N, Plane->d);
+
+        f32 Denom = Plane->N * RayDirection;
+        if ((Denom > -Epsilon) && (Denom < Epsilon)) {
+            continue;
+        }
+        if ((ThisDistance > 0) && (ThisDistance < HitDistance)) {
+            HitDistance = ThisDistance;
+            Result = World->Materials[Plane->MatIndex].Color;
+        }
+    }
+
+    for (u32 SphereIndex = 0; SphereIndex < World->SphereCount; SphereIndex++) {
+        sphere *Sphere = &World->Spheres[SphereIndex];
+        f32 ThisDistance = RayInersectSphere(RayOrigin, RayDirection, *Sphere);
+
+        if ((ThisDistance > 0) && (ThisDistance < HitDistance)) {
+            HitDistance = ThisDistance;
+            Result = World->Materials[Sphere->MatIndex].Color;
+        }
+    }
+
     return Result;
 }
 
 int main()
 {
-    material Materials[2] = {};
-    Materials[0].Color = V3(0, 0, 0);
-    Materials[1].Color = V3(1, 0, 0);
+    material Materials[3] = {};
+    Materials[0].Color = V3(0.1, 0.1, 0.1);
+    Materials[1].Color = V3(0.8, 0, 0);
+    Materials[2].Color = V3(0, 0, 0.8);
 
     plane Plane = {};
     Plane.N = V3(0, 0, 1);
@@ -71,8 +114,13 @@ int main()
     World.PlaneCount = 1;
     World.Planes = &Plane;
 
-    World.SphereCount = 0;
-    World.Spheres = 0;
+    sphere Spheres[1] = {};
+    Spheres[0].MatIndex = 2;
+    Spheres[0].P = V3(0, 0, 0);
+    Spheres[0].r = 1.0f;
+
+    World.SphereCount = 1;
+    World.Spheres = Spheres;
 
     v3 CameraPos = V3(0, 10, 1);
     v3 CameraZ = NOZ(CameraPos);
@@ -84,10 +132,10 @@ int main()
     f32 FilmW = 1.0f;
     f32 FilmH = 1.0f;
 
-    f32 HalfFilmW = FilmW / 2.0f;
-    f32 HalfFilmH = FilmH / 2.0f;
+    f32 HalfFilmW = FilmW * 0.5f;
+    f32 HalfFilmH = FilmH * 0.5f;
 
-    image_u32 Image = AllocateImage(1280, 720);
+    image_u32 Image = AllocateImage(720, 720);
 
     u32 *Out = Image.Pixels;
     for (u32 y = 0; y < Image.Height; y++) {

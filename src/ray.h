@@ -1,4 +1,5 @@
 #include <math.h>
+#include <float.h>
 #define internal static
 
 
@@ -11,6 +12,8 @@ typedef short s16;
 typedef int s32;
 
 typedef float f32;
+f32 F32Max = FLT_MAX;
+f32 Epsilon = 0.000001;
 
 union v3 {
     struct
@@ -133,9 +136,9 @@ f32 LengthSq(v3 A) {
 v3 Cross(v3 A, v3 B) {
     v3 Result = {};
 
-    Result.x = A.y * B.y + A.z * B.z;
-    Result.y = A.x * B.x + A.z * B.z;
-    Result.z = A.x * B.x + A.y * B.y;
+    Result.x = A.y * B.z + A.z * B.y;
+    Result.y = A.x * B.z + A.z * B.x;
+    Result.z = A.x * B.y + A.y * B.x;
 
     return Result;
 }
@@ -143,10 +146,14 @@ v3 Cross(v3 A, v3 B) {
 v3 NOZ(v3 A) {
     v3 Result = {};
     f32 LenSq = LengthSq(A);
-    if (LenSq > 0.00001 * 0.00001) {
+    if (LenSq > Epsilon * Epsilon) {
         Result = A * (1.0f / sqrt(LenSq));
     }
     return Result;
+}
+
+f32 operator*(v3 A, v3 B) {
+    return Inner(A, B);
 }
 
 u32 BMPPackVector(v3 v) {
