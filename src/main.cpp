@@ -61,7 +61,7 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
 
     v3 Result = {};
     v3 Attenuation = V3(1, 1, 1);
-    for (auto RayCount = 0; RayCount < 8; ++RayCount) {
+    for (auto RayCount = 0; RayCount < 2; ++RayCount) {
         f32 HitDistance = F32Max;
         bool HitSomething = false;
 
@@ -106,7 +106,8 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
                 HitSomething = true;
                 HitDistance = ThisDistance;
                 HitMaterialIndex = Sphere.MatIndex;
-                NextNormal = NOZ(ThisDistance * RayDirection + RayDirection - Sphere.P);
+                NextOrigin = ThisDistance * RayDirection;
+                NextNormal = NOZ(NextOrigin - Sphere.P);
             }
         }
 
@@ -115,12 +116,13 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
 
             Result = Result + Hadamard(Attenuation, Mat.EmitColor);
             Attenuation = Hadamard(Attenuation, Mat.ReflectColor);
+
             RayOrigin = HitDistance * RayDirection;
             // TODO: reflection
             v3 PureBounce = RayDirection - 2.0f * Inner(RayDirection, NextNormal) * NextNormal;
             // v3 RandomBounce = NOZ(NextNormal + V3(RandomBilateral(),RandomBilateral(),RandomBilateral() ));
             // RayDirection = NOZ(Lerp(RandomBounce, Mat.Scatter, PureBounce));
-            RayDirection = PureBounce;
+            RayDirection = NOZ(PureBounce);
 
         } else {
             material Mat = World->Materials[HitMaterialIndex];
@@ -135,7 +137,11 @@ int main()
 {
     material Materials[3] = {};
     Materials[0].EmitColor= V3(0.3, 0.4, 0.5);
+    Materials[1].EmitColor= V3(0, 0.8, 0);
     Materials[1].ReflectColor= V3(0.4, 0.7, 0.4);
+    Materials[1].Scatter = 0.5;
+    Materials[2].EmitColor= V3(0, 0, 0.8);
+    Materials[2].Scatter = 0.5;
     Materials[2].ReflectColor= V3(0.3, 0.3, 0.8);
 
     plane Plane = {};
@@ -191,7 +197,7 @@ int main()
 
             v3 Color = RayCast(RayOrigin, RayDirection, &World);
 
-            *Out ++ = BMPPackVector(Color);
+            *Out ++ = BMPPackVector(NOZ(Color));
         }
         if ( y % 64 == 0) {
             printf("Calculating %d\%\n", (u32)(100.0f * (f32)y/(f32)Image.Height));
