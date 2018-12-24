@@ -61,7 +61,7 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
 
     v3 Result = {};
     v3 Attenuation = V3(1, 1, 1);
-    for (auto RayCount = 0; RayCount < 2; ++RayCount) {
+    for (auto RayCount = 0; RayCount < 8; ++RayCount) {
         f32 HitDistance = F32Max;
         bool HitSomething = false;
 
@@ -106,7 +106,7 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
                 HitSomething = true;
                 HitDistance = ThisDistance;
                 HitMaterialIndex = Sphere.MatIndex;
-                NextOrigin = ThisDistance * RayDirection;
+                NextOrigin = RayOrigin + ThisDistance * RayDirection;
                 NextNormal = NOZ(NextOrigin - Sphere.P);
             }
         }
@@ -117,7 +117,7 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
             Result = Result + Hadamard(Attenuation, Mat.EmitColor);
             Attenuation = Hadamard(Attenuation, Mat.ReflectColor);
 
-            RayOrigin = HitDistance * RayDirection;
+            RayOrigin = RayOrigin + HitDistance * RayDirection;
             // TODO: reflection
             v3 PureBounce = RayDirection - 2.0f * Inner(RayDirection, NextNormal) * NextNormal;
             // v3 RandomBounce = NOZ(NextNormal + V3(RandomBilateral(),RandomBilateral(),RandomBilateral() ));
@@ -135,14 +135,17 @@ v3 RayCast(v3 RayOrigin, v3 RayDirection, world *World) {
 
 int main()
 {
-    material Materials[3] = {};
+    material Materials[4] = {};
     Materials[0].EmitColor= V3(0.3, 0.4, 0.5);
     Materials[1].EmitColor= V3(0, 0.8, 0);
     Materials[1].ReflectColor= V3(0.4, 0.7, 0.4);
-    Materials[1].Scatter = 0.5;
+    Materials[1].Scatter = 0.1;
     Materials[2].EmitColor= V3(0, 0, 0.8);
     Materials[2].Scatter = 0.5;
     Materials[2].ReflectColor= V3(0.3, 0.3, 0.8);
+    Materials[3].EmitColor= V3(0.9, 0, 0);
+    Materials[3].Scatter = 0.5;
+    Materials[3].ReflectColor= V3(0.5, 0.5, 0.5);
 
     plane Plane = {};
     Plane.N = V3(0, 0, 1);
@@ -156,12 +159,15 @@ int main()
     World.PlaneCount = 1;
     World.Planes = &Plane;
 
-    sphere Spheres[1] = {};
+    sphere Spheres[2] = {};
     Spheres[0].MatIndex = 2;
     Spheres[0].P = V3(0, 0, 0.63);
     Spheres[0].r = 1.0f;
+    Spheres[1].MatIndex = 3;
+    Spheres[1].P = V3(2.1, 0, 0.33);
+    Spheres[1].r = 1.0f;
 
-    World.SphereCount = 1;
+    World.SphereCount = 2;
     World.Spheres = Spheres;
     image_u32 Image = AllocateImage(1280, 720);
 
